@@ -1,0 +1,8 @@
+global __debug_operation;
+function startOp(){
+    __debug_operation = getOperations();
+}
+function stopOp(title){
+	var d = getOperations();
+    debug(title + ": " + (d-__debug_operation-3));
+}

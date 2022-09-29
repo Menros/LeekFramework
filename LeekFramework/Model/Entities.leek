@@ -1,0 +1,85 @@
+include("Items");
+
+class Entity {
+	private id;
+	private name;
+	private stats;
+	private chips;
+
+	constructor(id) {
+		this.id = id;
+		this.name = getName(this.id);
+		this.stats = new Stats(this.id);
+		this.chips = arrayMap(getChips(this.id), chipId => new Chip(chipId));
+	}
+	public getId() {return this.id;}
+	public getPosition() {return getCell(this.id);}
+	public getName() {return this.name;}
+	public getStats() {return this.stats;}
+	public getChips() {return this.chips;}
+	public isAlive() {return isAlive(this.id);}
+	public calulateDamageTaken(baseDamage) {
+		return baseDamage * (1 - this.stats.getRelativeShield(this.id) / 100) - this.stats.getAbsoluteShield(this.id);
+	}
+}
+
+class Leek extends Entity {
+	private weapons;
+	private equipedWeapon;
+	constructor(id) {
+		super(id);
+		this.weapons = arrayMap(getWeapons(this.id), wId => new Weapon(wId));
+		this.equipedWeapon = new Weapon(getWeapon(this.id));
+	}
+	public getWeapons() {return this.weapons;}
+	public equipWeapon(weapon) {
+		if(this.equipedWeapon != null && this.equipedWeapon.getId() == weapon.getId()) return;
+		setWeapon(weapon.getId());
+		this.equipedWeapon = weapon;
+	}
+	public shoot(target) {
+		if(target instanceof Entity && canUseWeapon(this.equipedWeapon.getId(), target.getId()))
+			useWeapon(target.getId());
+		else if(canUseWeaponOnCell(this.equipedWeapon.getId(), target))
+			useWeaponOnCell(target);
+	}
+}
+
+class Bulb extends Entity {
+	constructor(id) { super(id); }
+}
+
+class Turret extends Entity {
+	constructor(id) { super(id); }
+}
+
+class Stats {
+	private id;
+	constructor(idEntity) {this.id=idEntity;}
+	public getTotalLife(){return getTotalLife(this.id);}
+	public getLife(){return getLife(this.id);}
+	public getScience(){return getScience(this.id);}
+	public getStrength(){return getStrength(this.id);}
+	public getMagic(){return getMagic(this.id);}
+	public getWisdom(){return getWisdom(this.id);}
+	public getFrequency(){return getFrequency(this.id);}
+	public getAgility(){return getAgility(this.id);}
+	public getResistance(){return getResistance(this.id);}
+	public getRelativeShield(){return getRelativeShield(this.id);}
+	public getAbsoluteShield(){return getAbsoluteShield(this.id);}
+	public getMP(){return getMP(this.id);}
+	public getTP(){return getTP(this.id);}
+}
+
+function retrieveAllAliveEnemies() {
+	return arrayMap(getAliveEnemies(), id => buildEntity(id));
+}
+function retrieveAllEnemies() {
+	return arrayMap(getEnemies(), id => buildEntity(id));
+}
+
+function buildEntity(id) {
+	if (getType(id) == ENTITY_LEEK)		{ return new Leek(id); }
+	else if (getType(id) == ENTITY_BULB)	{ return new Bulb(id); }
+	else if (getType(id) == ENTITY_TURRET)	{ return new Turret(id); }
+}

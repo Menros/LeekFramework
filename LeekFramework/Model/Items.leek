@@ -1,0 +1,69 @@
+class Item {
+	private id;
+	private name;
+	private effects;
+	private itemArea;
+	constructor(id) {
+		this.id = id;
+		this.itemArea = new ItemArea(this.id);
+	}
+	public getId() {return this.id;}
+	public getName(){return this.name;}
+	public getEffects(){return this.effects;}
+	
+	public getNearestPositionToUseOn(target, mp) {
+		var targetPos;
+		if(target instanceof Entity) targetPos = target.getPosition();
+		else targetPos = target;
+		
+		if(isChip(this.getId())) {
+			debug(getCellsToUseChipOnCell(this.getId(), targetPos));
+		}
+		else {
+			debug(getCellsToUseWeaponOnCell(this.getId(), targetPos));
+		}
+	}
+}
+
+class Weapon extends Item {
+	constructor(id) {
+		super(id);
+		this.name = getWeaponName(this.getId());
+		this.effects = getWeaponEffects(this.getId());
+	}
+}
+
+class Chip extends Item {
+	constructor(id) {
+		super(id);
+		this.name = getChipName(this.getId());
+		this.effects = getChipEffects(this.getId());
+	}
+	public use(target){
+		if(target instanceof Entity && canUseChip(this.getId(), target.getId()))
+			useChip(this.getId(), target.getId());
+		else if(canUseChipOnCell(this.getId(), target))
+			useChipOnCell(this.getId(), target);
+	}
+	//TODO nearest pos to use, can use, ...
+}
+
+class ItemArea {
+	private minRange, maxRange;
+	private typeArea;
+	constructor(id) {
+		if(isChip(id)) {
+			this.minRange = getChipMinRange(id);
+			this.maxRange = getChipMaxRange(id);
+			this.typeArea = getChipArea(id);
+		}
+		else {
+			this.minRange = getWeaponMinRange(id);
+			this.maxRange = getWeaponMaxRange(id);
+			this.typeArea = getWeaponArea(id);
+		}
+	}
+	public getMinRange() {return this.minRange;}
+	public getMaxRange() {return this.maxRange;}
+	public getTypeArea() {return this.typeArea;}
+}

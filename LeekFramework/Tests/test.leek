@@ -1,0 +1,17 @@
+include("../Model/Entities");
+include("debug");
+
+
+startOp();
+var enemies = retrieveAllAliveEnemies();
+var me = buildEntity(getEntity());
+moveToward(enemies[0].getId());
+//debug(me);
+me.equipWeapon(me.getWeapons()[0]);
+me.shoot(enemies[0]);
+me.getChips()[0].use(me);
+me.getChips()[2].use(enemies[0].getPosition());
+stopOp("test framework");
+//debug(enemies);
+
+//debug(enemies[0].stats)
