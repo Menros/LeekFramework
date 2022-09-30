@@ -11,17 +11,35 @@ class Item {
 	public getName(){return this.name;}
 	public getEffects(){return this.effects;}
 	
-	public getNearestPositionToUseOn(target, mp) {
+	public getNearestAtkOption(source, target, mpMax=null) {
+		var sourcePos;
 		var targetPos;
+		var cells;
+		if(source instanceof Entity) {
+			if(mpMax=null) mpMax = source.getStats().getMP();
+			sourcePos = source.getPosition();
+		}
+		else{
+			if(mpMax=null) mpMax = 0;
+			sourcePos = source;
+		}
 		if(target instanceof Entity) targetPos = target.getPosition();
 		else targetPos = target;
 		
 		if(isChip(this.getId())) {
-			debug(getCellsToUseChipOnCell(this.getId(), targetPos));
+			cells = getCellsToUseChipOnCell(this.getId(), targetPos);
 		}
 		else {
-			debug(getCellsToUseWeaponOnCell(this.getId(), targetPos));
+			cells = getCellsToUseWeaponOnCell(this.getId(), targetPos);
 		}
+		cells = arrayMap(cells, c => {
+			var t = new Map();
+			mapPut(t, "cell", c);
+			mapPut(t, "dist", getPathLength(sourcePos, c));
+			return t;
+		});
+		cells = arrayFoldLeft(cells, (a, b) => mapGet(a, "dist") >= mapGet(b, "dist") ? b : a, cells[0]);
+		return new AtkOption(mapGet(cells, "cell"), mapGet(cells, "dist"), targetPos);
 	}
 }
 
@@ -45,25 +63,39 @@ class Chip extends Item {
 		else if(canUseChipOnCell(this.getId(), target))
 			useChipOnCell(this.getId(), target);
 	}
-	//TODO nearest pos to use, can use, ...
 }
 
 class ItemArea {
 	private minRange, maxRange;
 	private typeArea;
+	private aoe;
 	constructor(id) {
 		if(isChip(id)) {
 			this.minRange = getChipMinRange(id);
 			this.maxRange = getChipMaxRange(id);
-			this.typeArea = getChipArea(id);
+			this.typeArea = getChipLaunchType(id);
+			this.aoe = getChipArea(id);
 		}
 		else {
 			this.minRange = getWeaponMinRange(id);
 			this.maxRange = getWeaponMaxRange(id);
-			this.typeArea = getWeaponArea(id);
+			this.typeArea = getWeaponLaunchType(id);
+			this.aoe = getWeaponArea(id);
 		}
 	}
 	public getMinRange() {return this.minRange;}
 	public getMaxRange() {return this.maxRange;}
 	public getTypeArea() {return this.typeArea;}
+	public getAOE() {return this.aoe;}
+}
+
+class AtkOption {
+	public position;
+	public distToPos;
+	public target;
+	constructor(position, distToPos, target) {
+		this.position=position;
+		this.distToPos=distToPos;
+		this.target=target;
+	}
 }
