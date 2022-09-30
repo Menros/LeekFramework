@@ -21,6 +21,14 @@ class Entity {
 	public calulateDamageTaken(baseDamage) {
 		return baseDamage * (1 - this.stats.getRelativeShield(this.id) / 100) - this.stats.getAbsoluteShield(this.id);
 	}
+	public moveToward(target) {
+		if(target instanceof Entity) moveToward(target.getId());
+		else moveTowardCell(target);
+	}
+	public moveAway(target) {
+		if(target instanceof Entity) moveAwayFrom(target.getId());
+		else moveAwayFromCell(target);
+	}
 }
 
 class Leek extends Entity {
@@ -32,6 +40,7 @@ class Leek extends Entity {
 		this.equipedWeapon = new Weapon(getWeapon(this.id));
 	}
 	public getWeapons() {return this.weapons;}
+	public getEquipedWeapon() {return this.equipedWeapon}
 	public equipWeapon(weapon) {
 		if(this.equipedWeapon != null && this.equipedWeapon.getId() == weapon.getId()) return;
 		setWeapon(weapon.getId());
@@ -77,9 +86,18 @@ function retrieveAllAliveEnemies() {
 function retrieveAllEnemies() {
 	return arrayMap(getEnemies(), id => buildEntity(id));
 }
+function retrieveAllAliveAllies() {
+	return arrayMap(getAliveEnemies(), id => buildEntity(id));
+}
+function retrieveAllAllies() {
+	return arrayMap(getEnemies(), id => buildEntity(id));
+}
+function retrieveMe() {
+	return buildEntity(getEntity());
+}
 
 function buildEntity(id) {
-	if (getType(id) == ENTITY_LEEK)		{ return new Leek(id); }
+	if (getType(id) == ENTITY_LEEK)			{ return new Leek(id); }
 	else if (getType(id) == ENTITY_BULB)	{ return new Bulb(id); }
 	else if (getType(id) == ENTITY_TURRET)	{ return new Turret(id); }
 }
