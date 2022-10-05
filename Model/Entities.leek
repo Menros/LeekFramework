@@ -10,19 +10,24 @@ class Entity {
 		this.id = id;
 		this.name = getName(this.id);
 		this.stats = new Stats(this.id);
-		this.chips = arrayMap(getChips(this.id), chipId => new Chip(chipId));
+		this.chips = new Map();
+		arrayIter(getChips(this.id), chipId => {
+			var chip = new Chip(chipId, this.id);
+			mapPut(this.chips, chip.getId(), chip);
+		});
 	}
 	public getId() {return this.id;}
 	public getPosition() {return getCell(this.id);}
 	public getName() {return this.name;}
 	public getStats() {return this.stats;}
 	public getChips() {return this.chips;}
+	public getChip(chipId) {return mapGet(this.chips, chipId);}
 	public isAlive() {return isAlive(this.id);}
 	public calulateDamageTaken(baseDamage) {
 		return baseDamage * (1 - this.stats.getRelativeShield(this.id) / 100) - this.stats.getAbsoluteShield(this.id);
 	}
 	public moveToward(target) {
-		if(target instanceof Entity) moveToward(target.getId());
+		if(target instanceof Entity) moveTowardCell(target.getPosition());
 		else moveTowardCell(target);
 	}
 	public moveAway(target) {
@@ -36,29 +41,46 @@ class Leek extends Entity {
 	private equipedWeapon;
 	constructor(id) {
 		super(id);
-		this.weapons = arrayMap(getWeapons(this.id), wId => new Weapon(wId));
-		this.equipedWeapon = new Weapon(getWeapon(this.id));
+		this.weapons = new Map();
+		arrayIter(getWeapons(this.getId()), weaponId => {
+			var weapon = new Weapon(weaponId, this.getId());
+			mapPut(this.weapons, weapon.getId(), weapon);
+		});
+		this.equipedWeapon = new Weapon(getWeapon(this.getId()), this.getId());
 	}
 	public getWeapons() {return this.weapons;}
+	public getWeapon(weaponId) {return mapGet(this.weapons, weaponId);}
 	public getEquipedWeapon() {return this.equipedWeapon}
 	public equipWeapon(weapon) {
+		if(typeOf(weapon) == TYPE_NUMBER) weapon = this.getWeapon(weapon);
 		if(this.equipedWeapon != null && this.equipedWeapon.getId() == weapon.getId()) return;
 		setWeapon(weapon.getId());
 		this.equipedWeapon = weapon;
 	}
-	public shoot(target) {
-		if(target instanceof Entity && canUseWeapon(this.equipedWeapon.getId(), target.getId()))
-			useWeapon(target.getId());
-		else if(canUseWeaponOnCell(this.equipedWeapon.getId(), target))
-			useWeaponOnCell(target);
+	public getItem(itemId) {
+		if(isChip(itemId)) return this.getChip(itemId);
+		else if(isWeapon(itemId)) return this.getWeapon(itemId);
+		else return null;
 	}
 }
 
 class Bulb extends Entity {
 	constructor(id) { super(id); }
+	getItem(itemId) {
+		if(isChip(itemId)) return this.getChip(itemId);
+		else return null;
+	}
 }
 
 class Turret extends Entity {
+	constructor(id) { super(id); }
+	getItem(itemId) {
+		if(isChip(itemId)) return this.getChip(itemId);
+		else return null;
+	}
+}
+
+class Chest extends Entity {
 	constructor(id) { super(id); }
 }
 
@@ -96,8 +118,16 @@ function retrieveMe() {
 	return buildEntity(getEntity());
 }
 
+function retrieveNearestLeek(source, enemies) {
+	var sourcePos = source.getPosition();
+	return arraySort(enemies, (e1, e2) =>
+					 e1 instanceof Leek && getPathLength(sourcePos, e1) >= getPathLength(sourcePos, e2)
+					)[0];
+}
+
 function buildEntity(id) {
 	if (getType(id) == ENTITY_LEEK)			{ return new Leek(id); }
 	else if (getType(id) == ENTITY_BULB)	{ return new Bulb(id); }
 	else if (getType(id) == ENTITY_TURRET)	{ return new Turret(id); }
+	else if (getType(id) == ENTITY_CHEST)	{ return new Chest(id); }
 }

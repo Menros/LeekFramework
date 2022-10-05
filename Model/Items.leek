@@ -1,17 +1,29 @@
 class Item {
 	private id;
+	private ownerId;
 	private name;
 	private effects;
 	private itemArea;
-	constructor(id) {
+	private cost;
+	constructor(id, ownerId) {
 		this.id = id;
+		this.ownerId = ownerId;
 		this.itemArea = new ItemArea(this.id);
 	}
 	public getId() {return this.id;}
+	public getOwnerId() {return this.ownerId;}
 	public getName(){return this.name;}
 	public getEffects(){return this.effects;}
+	public getCost(){return this.cost;}
 	
-	public getNearestAtkOption(source, target, mpMax=null) {
+	public isOnCooldown() {
+		if(isChip(this.id))
+			return getCooldown(this.getId(), this.getOwnerId()) > 0;
+		else
+			return false;
+	}
+
+	public getNearestAtkOptionNew(source, target, mpMax=null) {
 		var sourcePos;
 		var targetPos;
 		var cells;
@@ -32,36 +44,98 @@ class Item {
 		else {
 			cells = getCellsToUseWeaponOnCell(this.getId(), targetPos);
 		}
+		
+		if (cells == null || isEmpty(cells)) return new AtkOption(0, 255, targetPos);
+		
 		cells = arrayMap(cells, c => {
 			var t = new Map();
+			var pathLength = getPathLength(sourcePos, c);
 			mapPut(t, "cell", c);
-			mapPut(t, "dist", getPathLength(sourcePos, c));
+			mapPut(t, "dist", pathLength!=null ? pathLength : 255); //TODO la fction ne prend pas en compte si on passe par une cellule occupée par une entité
 			return t;
 		});
-		cells = arrayFoldLeft(cells, (a, b) => mapGet(a, "dist") >= mapGet(b, "dist") ? b : a, cells[0]);
+		//cells = arrayFoldLeft(cells, (a, b) => mapGet(a, "dist") >= mapGet(b, "dist") ? b : a, cells[0]);
+		cells = arraySort(cells, (a, b) => mapGet(a, "dist") - mapGet(b, "dist"));
+		//mark(arrayMap(cells, x => mapGet(x, "cell")), COLOR_BLUE, 1);
+		cells = arrayGet(cells, 0);
+		mark(mapGet(cells, "cell"), COLOR_BLUE, 1);
+		markText(mapGet(cells, "cell"), this.getName(), COLOR_GREEN, 1);
 		return new AtkOption(mapGet(cells, "cell"), mapGet(cells, "dist"), targetPos);
+	}
+	
+	public getNearestAtkOption(source, target, mpMax=null) {
+		var sourcePos;
+		var targetPos;
+		var cell;
+		
+		if(source instanceof Entity) sourcePos = source.getPosition();
+		else sourcePos = source;
+		if(target instanceof Entity) targetPos = target.getPosition();
+		else targetPos = target;
+		
+		if(isChip(this.getId())) {
+			cell = getCellToUseChipOnCell(this.getId(), targetPos);
+		}
+		else {
+			cell = getCellToUseWeaponOnCell(this.getId(), targetPos);
+		}
+
+		mark(cell, COLOR_BLUE, 1);
+		markText(cell, this.getName(), COLOR_GREEN, 1);
+		
+		return new AtkOption(cell, getPathLength(sourcePos, cell), targetPos);
 	}
 }
 
 class Weapon extends Item {
-	constructor(id) {
-		super(id);
+	constructor(id, ownerId) {
+		super(id, ownerId);
 		this.name = getWeaponName(this.getId());
 		this.effects = getWeaponEffects(this.getId());
+		this.cost = getWeaponCost(this.getId());
+	}
+	
+	public shoot(target) {
+		if(target instanceof Entity && canUseWeapon(this.getId(), target.getId()))
+			useWeapon(target.getId());
+		else if(canUseWeaponOnCell(this.getId(), target))
+			useWeaponOnCell(target);
+	}
+	public canShoot(target) {
+		var can = getTP(this.getOwnerId()) >= this.getCost();
+		if(target instanceof Entity)
+			return can && canUseWeapon(this.getId(), target.getId());
+		else
+			return can && canUseWeaponOnCell(this.getId(), target);
 	}
 }
 
 class Chip extends Item {
-	constructor(id) {
-		super(id);
+	constructor(id, ownerId) {
+		super(id, ownerId);
 		this.name = getChipName(this.getId());
 		this.effects = getChipEffects(this.getId());
+		this.cost = getChipCost(this.getId());
 	}
-	public use(target){
+	public summon(target, ai) {
+		if(target instanceof Entity && canUseChip(this.getId(), target.getId()))
+			summon(this.getId(), target.getPosition(), ai);
+		else if(canUseChipOnCell(this.getId(), target))
+			summon(this.getId(), target, ai);
+	}
+	public use(target) {
 		if(target instanceof Entity && canUseChip(this.getId(), target.getId()))
 			useChip(this.getId(), target.getId());
 		else if(canUseChipOnCell(this.getId(), target))
 			useChipOnCell(this.getId(), target);
+	}
+	public canUse(target) {
+		var can = 	!this.isOnCooldown() &&
+					getTP(this.getOwnerId()) >= this.getCost();
+		if(target instanceof Entity)
+			return	can && canUseChip(this.getId(), target.getId());
+		else
+			return can && canUseChipOnCell(this.getId(), target);
 	}
 }
 
@@ -97,5 +171,11 @@ class AtkOption {
 		this.position=position;
 		this.distToPos=distToPos;
 		this.target=target;
+	}
+	public getPosition() {return this.position;}
+	public getDistToPos() {return this.distToPos;}
+	public getTarget() {return this.target;}
+	public toString() {
+		return "{position: "+this.position+", distToPos "+this.distToPos+", target: "+this.target+"}";
 	}
 }
